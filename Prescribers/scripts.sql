@@ -2,32 +2,94 @@
 --     a. Which prescriber had the highest total number of claims (totaled over all drugs)? Report the npi and the total number of claims.
 
 select  
-	   c.npi, c.nppes_provider_first_name  as name,
+	   c.npi, 
 	   sum(total_claim_count) as number_of_claims
 from  prescriber as c
 inner join prescription as p
 on c.npi = p.npi
-group by c.npi, name
+group by c.npi
 order by number_of_claims DESC
 limit 1
 
 	
 --     b. Repeat the above, but this time report the nppes_provider_first_name, nppes_provider_last_org_name,  specialty_description, and the total number of claims.
 
+select  
+	   c.npi, c.nppes_provider_first_name  as first_name,
+	   c.nppes_provider_last_org_name  as last_name, c.specialty_description,
+	   sum(total_claim_count) as number_of_claims
+from  prescriber as c
+inner join prescription as p
+on c.npi = p.npi
+group by c.npi, first_name, last_name, specialty_description
+order by number_of_claims DESC
+limit 1
 
 
 	 
 -- 2. 
 --     a. Which specialty had the most total number of claims (totaled over all drugs)?
 
+select  c.specialty_description,
+        sum(total_claim_count) as total_claims
+from  prescriber as c
+left join prescription as p
+on c.npi = p.npi
+where total_claim_count IS NOT NULL
+group by c.specialty_description
+order by total_claims DESC
+limit 1
+
 --     b. Which specialty had the most total number of claims for opioids?
+
+select c.specialty_description,
+      sum(total_claim_count) AS claims_for_opioids
+from prescriber AS c
+inner join prescription AS p
+    ON c.npi = p.npi
+inner join drug AS d 
+    ON d.drug_name = p.drug_name
+where d.opioid_drug_flag = 'Y'
+group by c.specialty_description
+order by claims_for_opioids DESC
+limit 5;
+
 
 --     c. **Challenge Question:** Are there any specialties that appear in the prescriber table that have no associated prescriptions in the prescription table?
 
+select distinct c.specialty_description
+from  prescriber as c
+inner join  prescription AS p
+on c.npi = p.npi
+where p.npi IS NOT NULL
+
+
 --     d. **Difficult Bonus:** *Do not attempt until you have solved all other problems!* For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
+
+
+select c.specialty_description as specialty,
+       round(avg(total_claim_count), 2) AS claims_for_opioids
+from prescriber AS c
+inner join prescription AS p
+    on c.npi = p.npi
+inner join drug AS d 
+    ON d.drug_name = p.drug_name
+where d.opioid_drug_flag = 'Y'
+group by c.specialty_description
+order by claims_for_opioids DESC
+
 
 -- 3. 
 --     a. Which drug (generic_name) had the highest total drug cost?
+
+select c.generic_name as drug_name,
+       sum(p.total_drug_cost) as total_cost
+ from prescription as p
+ inner join drug as c
+ on c.drug_name = p.drug_name 
+ group by generic_name
+ order by total_cost DESC
+ limit 1
 
 --     b. Which drug (generic_name) has the hightest total cost per day? **Bonus: Round your cost per day column to 2 decimal places. Google ROUND to see how this works.**
 
