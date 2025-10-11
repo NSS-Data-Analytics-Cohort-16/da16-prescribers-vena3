@@ -113,24 +113,40 @@ select drug_name,
        when antibiotic_drug_flag = 'Y' then 'antibiotic'
 	   else 'neither' end as drug_type
 from drug;
+
 	  
 --     b. Building off of the query you wrote for part a, determine whether more was spent (total_drug_cost) on opioids or on antibiotics. Hint: Format the total costs as MONEY for easier comparision.
 
-select drug_name, total_drug_cost as mony,
+select  
   case when opioid_drug_flag = 'Y' then 'opioid' 
        when antibiotic_drug_flag = 'Y' then 'antibiotic'
-	   else 'neither' end as drug_type
-from drug as d
-inner join prescription as p
+	   end as drug_type,
+	   round(sum(total_drug_cost), 0) as mony
+from drug 
+inner join prescription 
 using(drug_name)
-group by drug_name, total_drug_cost, drug_type
+where opioid_drug_flag = 'Y' or antibiotic_drug_flag = 'Y'
+group by drug_type
 order by mony DESC;
+
 
 -- 5. 
 --     a. How many CBSAs are in Tennessee? **Warning:** The cbsa table contains information for all states, not just Tennessee.
 
+select *
+from cbsa
+
+select f.fipscounty, c.cbsa, state
+from fips_county as f
+inner join cbsa as c
+on f.fipscounty = c.fipscounty
+where state = 'TN'
+	       
+
+
 --     b. Which cbsa has the largest combined population? Which has the smallest? Report the CBSA name and total population.
 
+select 
 --     c. What is the largest (in terms of population) county which is not included in a CBSA? Report the county name and population.
 
 -- 6. 
