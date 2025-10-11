@@ -121,13 +121,13 @@ select
   case when opioid_drug_flag = 'Y' then 'opioid' 
        when antibiotic_drug_flag = 'Y' then 'antibiotic'
 	   end as drug_type,
-	   round(sum(total_drug_cost), 0) as mony
+	   round(sum(total_drug_cost), 0) as money
 from drug 
 inner join prescription 
 using(drug_name)
 where opioid_drug_flag = 'Y' or antibiotic_drug_flag = 'Y'
 group by drug_type
-order by mony DESC;
+order by money DESC;
 
 
 -- 5. 
@@ -146,20 +146,156 @@ where state = 'TN'
 
 --     b. Which cbsa has the largest combined population? Which has the smallest? Report the CBSA name and total population.
 
-select 
+select *
+from population
+
+
+select c.cbsa, cbsaname, 
+       	   (max(p.population)) as largest_combine
+from cbsa as c
+inner join population as p
+on c.fipscounty = p.fipscounty
+group by cbsa, cbsaname
+order by largest_combine
+limit 1
+
+select c.cbsa, cbsaname, 
+       	   (min(p.population)) as smallest_combine
+from cbsa as c
+inner join population as p
+on c.fipscounty = p.fipscounty
+group by cbsa, cbsaname
+order by smallest_combine
+limit 1
+
+
+select cbsa, cbsaname,
+   case  
+        when sum(population) = max(sum(population)) over () then 'Largest'
+        when sum(population) = min(sum(population)) over () then 'Smallest'
+        end as combined_population 
+from cbsa as c
+inner join population as p
+on c.fipscounty = p.fipscounty
+where population is not null
+group by cbsa, cbsaname
+
+
 --     c. What is the largest (in terms of population) county which is not included in a CBSA? Report the county name and population.
+
+select  c.county, 
+       (max(p.population)) as largest_combine	   
+from fips_county as c
+inner join population as p
+on  c.fipscounty = p.fipscounty
+group by  county
+order by largest_combine DESC
+limit 1
 
 -- 6. 
 --     a. Find all rows in the prescription table where total_claims is at least 3000. Report the drug_name and the total_claim_count.
 
+select drug_name,
+       total_claim_count
+from   prescription
+where total_claim_count >= 3000
+order by total_claim_count DESC;
+
+
 --     b. For each instance that you found in part a, add a column that indicates whether the drug is an opioid.
 
+select p.drug_name, 	
+       total_claim_count,
+	   case when d.opioid_drug_flag = 'Y' then 'opioid'
+	   end as opioid
+from   prescription as p
+inner join drug as d
+on p.drug_name = d.drug_name
+where total_claim_count >= 3000
+order by total_claim_count DESC 
+
+
+
 --     c. Add another column to you answer from the previous part which gives the prescriber first and last name associated with each row.
+
+select nppes_provider_first_name, nppes_provider_last_org_name,
+       p.drug_name,
+       total_claim_count,
+	   case when d.opioid_drug_flag = 'Y' then 'opioid'
+	   end as opioid
+from   prescriber as p2                         
+inner join prescription as p
+using (npi)
+inner join drug as d
+on p.drug_name = d.drug_name
+where total_claim_count >= 3000 
+order by total_claim_count DESC 
+
 
 -- 7. The goal of this exercise is to generate a full list of all pain management specialists in Nashville and the number of claims they had for each opioid. **Hint:** The results from all 3 parts will have 637 rows.
 
 --     a. First, create a list of all npi/drug_name combinations for pain management specialists (specialty_description = 'Pain Management) in the city of Nashville (nppes_provider_city = 'NASHVILLE'), where the drug is an opioid (opiod_drug_flag = 'Y'). **Warning:** Double-check your query before running it. You will only need to use the prescriber and drug tables since you don't need the claims numbers yet.
 
+
+select npi,
+	drug_name
+from prescriber
+cross join drug
+where specialty_description = 'Pain Management'
+and nppes_provider_city = 'NASHVILLE'
+and opioid_drug_flag = 'Y'
+order by npi, drug_name DESC
+
+
 --     b. Next, report the number of claims per drug per prescriber. Be sure to include all combinations, whether or not the prescriber had any claims. You should report the npi, the drug name, and the number of claims (total_claim_count).
-    
+
+select c.npi, d.drug_name, t.total_claim_count
+from prescriber as c
+cross join drug as d
+left join prescription as t
+on t.npi = c.npi
+and t.drug_name = d.drug_name
+where specialty_description = 'Pain Management'
+and nppes_provider_city = 'NASHVILLE'
+and opioid_drug_flag = 'Y';
+
+
 --     c. Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.
+
+
+select c.npi, d.drug_name, t.total_claim_count,
+       coalesce(total_claim_count, 0)
+from prescriber as c
+cross join drug as d
+left join prescription as t
+on t.npi = c.npi
+and t.drug_name = d.drug_name
+where specialty_description = 'Pain Management'
+and nppes_provider_city = 'NASHVILLE'
+and opioid_drug_flag = 'Y'
+
+
+-- Bonus
+
+-- 1. How many npi numbers appear in the prescriber table but not in the prescription table?
+
+-- 2.
+--     a. Find the top five drugs (generic_name) prescribed by prescribers with the specialty of Family Practice.
+
+--     b. Find the top five drugs (generic_name) prescribed by prescribers with the specialty of Cardiology.
+
+--     c. Which drugs are in the top five prescribed by Family Practice prescribers and Cardiologists? Combine what you did for parts a and b into a single query to answer this question.
+
+-- 3. Your goal in this question is to generate a list of the top prescribers in each of the major metropolitan areas of Tennessee.
+--     a. First, write a query that finds the top 5 prescribers in Nashville in terms of the total number of claims (total_claim_count) across all drugs. Report the npi, the total number of claims, and include a column showing the city.
+    
+--     b. Now, report the same for Memphis.
+    
+--     c. Combine your results from a and b, along with the results for Knoxville and Chattanooga.
+
+-- 4. Find all counties which had an above-average number of overdose deaths. Report the county name and number of overdose deaths.
+
+-- 5.
+--     a. Write a query that finds the total population of Tennessee.
+    
+    -- b. Build off of the query that you wrote in part a to write a query that returns for each county that county's name, its population, and the percentage of the total population of Tennessee that is contained in that county.
